@@ -5,31 +5,33 @@ NEIGHBOUR_OFFSETS = [(-1, 1), (0, 1), (1, 1),
                      (-1, -1), (0, -1), (1, -1)]
 
 PHYSICS_blockS = {'grass',
-                 'left_grass',
-                 'right_grass',
-                 'left_ground_wall',
-                 'ground',
-                 'right_ground_wall',
-                 'left_bottom_ground',
-                 'bottom_ground',
-                 'right_bottom_ground',
-                 'top_brick',
-                 'top_left_brick',
-                 'top_right_brick',
-                 'left_brick',
-                 'mid_brick',
-                 'right_brick',
-                 'bottom_brick',
-                 'bottom_left_brick',
-                 'bottom_right_brick',
-                 'closed_door',
-                 'closed_gray_door',
-                 'glass',
-                 'wood',
-                 'gray_block'}
+                  'left_grass',
+                  'right_grass',
+                  'left_ground_wall',
+                  'ground',
+                  'right_ground_wall',
+                  'left_bottom_ground',
+                  'bottom_ground',
+                  'right_bottom_ground',
+                  'top_brick',
+                  'top_left_brick',
+                  'top_right_brick',
+                  'left_brick',
+                  'mid_brick',
+                  'right_brick',
+                  'bottom_brick',
+                  'bottom_left_brick',
+                  'bottom_right_brick',
+                  'closed_door',
+                  'closed_gray_door',
+                  'glass',
+                  'wood',
+                  'gray_block',
+                  'stone_default',
+                  'lamp'}
 
 HIDING_blockS = {'bush',
-                'big_wall'}
+                 'big_wall'}
 
 
 class Blockmap:
@@ -75,7 +77,7 @@ class Blockmap:
         """Возвращает blocks из blockmap вокруг pos"""
         blocks = list()
         block_pos = (
-        int(pos[0] // self.block_size[0]), int(pos[1] // self.block_size[1]))
+            int(pos[0] // self.block_size[0]), int(pos[1] // self.block_size[1]))
         for offset in NEIGHBOUR_OFFSETS:
             check_pos = str(block_pos[0] + offset[0]) + ';' + str(
                 block_pos[1] + offset[1])
@@ -100,12 +102,13 @@ class Blockmap:
     def render(self, surface, is_editor=False, offset=(0, 0)):
         for block in self.blockmap.values():
             if (self.game.assets[block['type']] is None or
-                    (block['type'] in ("heal", "random_potion", "opened_door", "closed_door", "opened_gray_door", "closed_gray_door")
+                    (block['type'] in (
+                    "heal", "random_potion", "opened_door", "closed_door", "opened_gray_door", "closed_gray_door")
                      and not is_editor) or
                     'hide' in block):
                 continue
             block_pos = (block['pos'][0] * self.block_size[0],
-                        block['pos'][1] * self.block_size[1])
+                         block['pos'][1] * self.block_size[1])
             surface.blit(self.game.assets[block['type']],
                          (block_pos[0] - offset[0], block_pos[1] - offset[1]))
 
@@ -113,6 +116,6 @@ class Blockmap:
         for block in self.blockmap.values():
             if 'hide' in block:
                 block_pos = (block['pos'][0] * self.block_size[0],
-                            block['pos'][1] * self.block_size[1])
+                             block['pos'][1] * self.block_size[1])
                 surface.blit(self.game.assets[block['type']],
                              (block_pos[0] - offset[0], block_pos[1] - offset[1]))
