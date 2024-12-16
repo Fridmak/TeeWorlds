@@ -7,8 +7,9 @@ from scripts.infrustructure import load_sprite
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')) + '\\assets\\sprites\\'
 
+
 class Bullet:
-    def __init__(self, game, pos, direction, is_bullet_flipped, angle, damage, range_shoot=200, speed=5, knockback=-1):
+    def __init__(self, game, pos, direction, is_bullet_flipped, angle, damage, range_shoot=200, speed=5, knockback=-1, rickochet = False):
         self.game = game
         self.direction = direction
         self.image = self.load_and_scale_image(BASE_DIR + '\\tools\\rpg\\bullet_rpg.png')
@@ -27,6 +28,8 @@ class Bullet:
         self.is_damaged = False
         self.damaged_players = []
         self.knockback = knockback
+        self.distance_flaught = 0
+        self.rickochet = rickochet
 
     def load_and_scale_image(self, path):
         image = load_sprite(path)
@@ -41,6 +44,7 @@ class Bullet:
             return
 
         self.update_position()
+        self.update_range()
         self.check_range()
 
     def check_collisions(self, is_enemy):
@@ -69,9 +73,46 @@ class Bullet:
                 if is_enemy:
                     self.start_explode()
                     return True
+                if self.rickochet:
+                    normal_vector = self.calculate_normal(bullet_rect, rect)
+                    self.reflect(normal_vector)
+                    return False
                 self.damage_nearby_players()
                 return True
         return False
+
+    def reflect(self, normal_vector):
+        dot_product = sum(p * n for p, n in zip(self.velocity, normal_vector))
+        self.velocity = [
+            (self.velocity[0] - 2 * dot_product * normal_vector[0]) * 0.9,
+            (self.velocity[1] - 2 * dot_product * normal_vector[1]) * 0.9
+        ]
+        self.direction = [
+            self.velocity[0] / math.sqrt(self.velocity[0] ** 2 + self.velocity[1] ** 2),
+            self.velocity[1] / math.sqrt(self.velocity[0] ** 2 + self.velocity[1] ** 2)
+        ]
+        self.angle = math.degrees(math.atan2(-self.velocity[1], self.velocity[0]))
+
+    def calculate_normal(self, bullet_rect, object_rect):
+        if abs(bullet_rect.left - object_rect.right) < abs(bullet_rect.right - object_rect.left):
+            return (-1, 0)
+        elif abs(bullet_rect.right - object_rect.left) < abs(bullet_rect.left - object_rect.right):
+            return (1, 0)
+        elif abs(bullet_rect.top - object_rect.bottom) < abs(bullet_rect.bottom - object_rect.top):
+            return (0, -1)
+        else:
+            return (0, 1)
+
+    def update_range(self):
+        self.distance_flaught = self.distance_traveled()
+        self.start_pos = self.pos
+
+    def check_range(self):
+        if self.distance_traveled() > self.range:
+            self.is_exist = False
+
+    def distance_traveled(self):
+        return self.distance_to(self.start_pos) + self.distance_flaught
 
     def mark_for_damage(self, player):
         self.damaged_players.append(player.id)
@@ -93,14 +134,7 @@ class Bullet:
         self.pos[0] += self.velocity[0]
         self.pos[1] += self.velocity[1]
 
-    def check_range(self):
-        if self.distance_traveled() > self.range:
-            self.is_exist = False
-
-    def distance_traveled(self):
-        return self.distance_to(self.start_pos)
-
-    def deal_damage_to_player(self, player, k : float =1):
+    def deal_damage_to_player(self, player, k: float = 1):
         player.take_damage(self.damage * k)
         self.apply_explosion_force(player)
         self.start_explode()
@@ -150,7 +184,8 @@ class Bullet:
 
     def render_bullet(self, surface):
         image = pygame.transform.flip(self.image, True, False) if self.is_bullet_flipped else self.image
-        surface.blit(pygame.transform.rotate(image, -self.angle), (self.pos[0] - self.offset[0], self.pos[1] - self.offset[1]))
+        surface.blit(pygame.transform.rotate(image, -self.angle),
+                     (self.pos[0] - self.offset[0], self.pos[1] - self.offset[1]))
 
     def render_explosion(self, surface):
         self.explosion_group.draw(surface)

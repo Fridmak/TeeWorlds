@@ -356,6 +356,9 @@ class Game:
             self.player.current_weapon.shooting_timeout = 0.01
         elif code == "no_knockback":
             self.player.current_weapon.push_power = 0  # 0 is important (in rpg_bullet)
+        elif code == "RICO":
+            if str(self.player.current_weapon) == "RPG":
+                self.player.current_weapon.rickochet = True
 
     def _update_game_state(self) -> None:
         """Update game state and network synchronization."""

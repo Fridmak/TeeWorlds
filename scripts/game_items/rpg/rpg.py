@@ -21,6 +21,7 @@ class Rpg:
         self.is_bullet_flipped = False
         self.damage = 30
         self.shooting_timeout = 60
+        self.rickochet = False
 
     def get_shooting_direction(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -32,7 +33,7 @@ class Rpg:
         if self.ticks > self.shooting_timeout:
             self.ticks = 0
             bullet = Bullet(self.game, self.player.rect().center, direction, self.is_bullet_flipped, self.angle,
-                            self.damage, knockback=self.push_power)
+                            self.damage, knockback=self.push_power, rickochet=self.rickochet)
             self.player.bullets.append(bullet)
 
     def update(self, tilemap, offset=(0, 0)):
@@ -83,3 +84,6 @@ class Rpg:
         """Returns the key point for rotation when the image is flipped."""
         return ((223 - self.key_point[0]) / self.scale_mult,
                 (59 - self.key_point[1]) / self.scale_mult)
+
+    def __str__(self):
+        return "RPG"

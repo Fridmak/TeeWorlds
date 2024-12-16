@@ -84,3 +84,6 @@ class DefaultGun:
             origin_pos = (self.key_point[0] / self.scale_mult, self.key_point[1] / self.scale_mult)
 
         return flipped_image, origin_pos, angle_correction
+
+    def __str__(self):
+        return "DEFAULT_GUN"
