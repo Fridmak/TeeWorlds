@@ -2,14 +2,21 @@ import random
 
 import pygame
 import math, os
+
+from dateutil.rrule import DAILY
+
 from scripts.game_items.rpg.explosion import Explosion
 from scripts.infrustructure import load_sprite
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')) + '\\assets\\sprites\\'
 
+MIN_SPEED = 1
+DUMPING = 0.7
+
 
 class Bullet:
-    def __init__(self, game, pos, direction, is_bullet_flipped, angle, damage, range_shoot=200, speed=5, knockback=-1, rickochet = False):
+    def __init__(self, game, pos, direction, is_bullet_flipped, angle, damage, range_shoot=200, speed=5, knockback=-1,
+                 rickochet=False):
         self.game = game
         self.direction = direction
         self.image = self.load_and_scale_image(BASE_DIR + '\\tools\\rpg\\bullet_rpg.png')
@@ -28,8 +35,8 @@ class Bullet:
         self.is_damaged = False
         self.damaged_players = []
         self.knockback = knockback
-        self.distance_flaught = 0
         self.rickochet = rickochet
+        self.flaught_away = False
 
     def load_and_scale_image(self, path):
         image = load_sprite(path)
@@ -44,8 +51,8 @@ class Bullet:
             return
 
         self.update_position()
-        self.update_range()
-        self.check_range()
+        if not self.rickochet:
+            self.check_range()
 
     def check_collisions(self, is_enemy):
         bullet_rect = self.rect()
@@ -66,6 +73,11 @@ class Bullet:
         for player in self.game.players.values():
             if bullet_rect.colliderect(player.rect()):
                 self.mark_for_damage(player)
+        if bullet_rect.colliderect(self.game.player.rect()):
+            if self.flaught_away:
+                self.mark_for_damage(self.game.player)
+        else:
+            self.flaught_away = True
 
     def check_block_collisions(self, bullet_rect, is_enemy):
         for rect in self.game.blockmap.physics_rects_around(self.pos):
@@ -74,7 +86,12 @@ class Bullet:
                     self.start_explode()
                     return True
                 if self.rickochet:
-                    normal_vector = self.calculate_normal(bullet_rect, rect)
+                    prev_pos = [
+                        self.pos[0] - self.velocity[0],
+                        self.pos[1] - self.velocity[1]
+                    ]
+                    self.pos = prev_pos
+                    normal_vector = self.calculate_normal(self.rect(), rect)
                     self.reflect(normal_vector)
                     return False
                 self.damage_nearby_players()
@@ -82,37 +99,45 @@ class Bullet:
         return False
 
     def reflect(self, normal_vector):
-        dot_product = sum(p * n for p, n in zip(self.velocity, normal_vector))
+        dot_product = sum(v * n for v, n in zip(self.velocity, normal_vector))
+
+        # v₂ = v₁ - 2(v₁·n)n
         self.velocity = [
-            (self.velocity[0] - 2 * dot_product * normal_vector[0]) * 0.9,
-            (self.velocity[1] - 2 * dot_product * normal_vector[1]) * 0.9
+            (self.velocity[0] - 2 * dot_product * normal_vector[0]) * DUMPING,
+            (self.velocity[1] - 2 * dot_product * normal_vector[1]) * DUMPING
         ]
+
+        current_speed = math.sqrt(self.velocity[0] ** 2 + self.velocity[1] ** 2)
+        if current_speed < MIN_SPEED:
+            self.start_explode()
+            return
+
         self.direction = [
-            self.velocity[0] / math.sqrt(self.velocity[0] ** 2 + self.velocity[1] ** 2),
-            self.velocity[1] / math.sqrt(self.velocity[0] ** 2 + self.velocity[1] ** 2)
+            self.velocity[0] / current_speed,
+            self.velocity[1] / current_speed
         ]
+
         self.angle = math.degrees(math.atan2(-self.velocity[1], self.velocity[0]))
 
     def calculate_normal(self, bullet_rect, object_rect):
-        if abs(bullet_rect.left - object_rect.right) < abs(bullet_rect.right - object_rect.left):
+        collision_x = max(object_rect.left, min(bullet_rect.centerx, object_rect.right))
+        collision_y = max(object_rect.top, min(bullet_rect.centery, object_rect.bottom))
+
+        if collision_x == object_rect.left:
             return (-1, 0)
-        elif abs(bullet_rect.right - object_rect.left) < abs(bullet_rect.left - object_rect.right):
+        elif collision_x == object_rect.right:
             return (1, 0)
-        elif abs(bullet_rect.top - object_rect.bottom) < abs(bullet_rect.bottom - object_rect.top):
+        elif collision_y == object_rect.top:
             return (0, -1)
         else:
             return (0, 1)
-
-    def update_range(self):
-        self.distance_flaught = self.distance_traveled()
-        self.start_pos = self.pos
 
     def check_range(self):
         if self.distance_traveled() > self.range:
             self.is_exist = False
 
     def distance_traveled(self):
-        return self.distance_to(self.start_pos) + self.distance_flaught
+        return self.distance_to(self.start_pos)
 
     def mark_for_damage(self, player):
         self.damaged_players.append(player.id)
