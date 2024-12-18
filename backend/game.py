@@ -290,7 +290,7 @@ class Game:
         if event.button == RIGHT_CLICK:
             self.player.hook.shoot(direction)
         elif event.button == LEFT_CLICK:
-            if self.auto_aim:
+            if not self.auto_aim:
                 self.player.current_weapon.shoot(direction)
             else:
                 self.player.current_weapon.shoot(self._handle_aimbot(direction)) #ToDo: check
@@ -299,19 +299,33 @@ class Game:
     def _handle_aimbot(self, direction):
         nearest_player_direction = direction
         min_dist = 99999
-        velocity = []
+        velocity = [0, 0]
+        predict = direction
 
         for addr, player_info in self.players_data.items():
             my_cords = self.player.pos
             other_cords = [player_info['x'], player_info['y']]
 
-            distance = math.sqrt((my_cords[0] - other_cords[0])^2 + (my_cords[1] - other_cords[1])^2)
+            distance = math.sqrt((my_cords[0] - other_cords[0])**2 + (my_cords[1] - other_cords[1])**2)
 
             if distance < min_dist:
                 nearest_player_direction = other_cords
-                velocity = player_info['']
+                velocity = player_info['velocity']
 
-        return self.normalize(nearest_player_direction)
+                predict = [nearest_player_direction[0] - my_cords[0] + velocity[0], nearest_player_direction[1] - my_cords[1] + velocity[1]]
+
+        return self.normalize(predict)
+
+    def _handle_shooting(self):
+        mouse_pos = pygame.mouse.get_pos()
+        world_mouse_pos = (mouse_pos[0], mouse_pos[1])
+        direction = self._calculate_direction(world_mouse_pos)
+
+        if self.player.current_weapon.is_shooting:
+            if not self.auto_aim:
+                self.player.current_weapon.shoot(direction)
+            else:
+                self.player.current_weapon.shoot(self._handle_aimbot(direction))
 
 
     def _handle_mouse_up(self, event: pygame.event.Event) -> None:
@@ -388,7 +402,7 @@ class Game:
                 if str(self.player.current_weapon) == "RPG":
                     self.player.current_weapon.rickochet = True
             case "auto_aim":
-                self.player.current_weapon.auto_aim = True
+                self.auto_aim = True
 
 
     def _update_game_state(self) -> None:
@@ -429,7 +443,8 @@ class Game:
             'nickname': player.name,
             'id': player.id,
             'is_e_active': player.is_e_active,
-            'is_hiding': player.is_hiding
+            'is_hiding': player.is_hiding,
+            'velocity' : player.velocity
         })
 
 
@@ -485,6 +500,7 @@ class Game:
         player.id = player_info['id']
         player.is_e_active = player_info['is_e_active']
         player.is_hiding = player_info['is_hiding']
+        #player.velocity = player_info['velocity']
 
 
     def deserialize_bullet(self, bullet_info):
@@ -556,6 +572,7 @@ class Game:
             if not self.running:
                 break
 
+            self._handle_shooting()
             self._handle_rendering()
             self._update_game_state()
             self._update_display()

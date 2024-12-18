@@ -52,9 +52,6 @@ class DefaultGun:
 
     def update(self, tilemap, _):
         self.ticks += 1
-        if self.is_shooting:
-            direction = self.get_shooting_direction()
-            self.shoot(direction)
 
     def give_player_impulse(self, direction):
         self.player.velocity[0] -= self.push_power * direction[0]
