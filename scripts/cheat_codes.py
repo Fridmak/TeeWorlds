@@ -5,7 +5,8 @@ cheat_cods = {
     "ANIME" : "no_recoil",
     "JUMPER" : "no_jump_limits",
     "TANK" : "no_knockback",
-    "RICO" : "RICO"
+    "RICO" : "RICO",
+    "SH1RO" : "auto_aim"
 }
 
 

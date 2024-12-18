@@ -29,6 +29,7 @@ class DefaultGun:
         self.shooting_times = shooting_times
         self.stability = stability
 
+
     def shoot(self, direction):
         if self.ticks > self.shooting_timeout:
             self.ticks = 0
