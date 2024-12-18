@@ -3,8 +3,6 @@ import random
 import pygame
 import math, os
 
-from dateutil.rrule import DAILY
-
 from scripts.game_items.rpg.explosion import Explosion
 from scripts.infrustructure import load_sprite
 
@@ -23,7 +21,8 @@ class Bullet:
         self.start_pos = list(pos)
         self.pos = self.start_pos[:]
         self.range = range_shoot
-        self.velocity = [direction[0] * speed, direction[1] * speed]
+        self.spread = 3
+        self.velocity = self._apply_spread(direction, speed, self.spread)
         self.exploding_radius = 50
         self.exploded = False
         self.is_exist = True
@@ -53,6 +52,13 @@ class Bullet:
         self.update_position()
         if not self.rickochet:
             self.check_range()
+
+    def _apply_spread(self, direction, speed, spread):
+        spread_angle = random.uniform(-spread, spread)
+
+        angle = math.atan2(direction[1], direction[0]) + math.radians(spread_angle)
+
+        return [math.cos(angle) * speed, math.sin(angle) * speed]
 
     def check_collisions(self, is_enemy):
         bullet_rect = self.rect()
@@ -86,11 +92,7 @@ class Bullet:
                     self.start_explode()
                     return True
                 if self.rickochet:
-                    prev_pos = [
-                        self.pos[0] - self.velocity[0],
-                        self.pos[1] - self.velocity[1]
-                    ]
-                    self.pos = prev_pos
+                    self._handle_bullet_penetration(bullet_rect, rect)
                     normal_vector = self.calculate_normal(self.rect(), rect)
                     self.reflect(normal_vector)
                     return False
@@ -98,39 +100,125 @@ class Bullet:
                 return True
         return False
 
-    def reflect(self, normal_vector):
-        dot_product = sum(v * n for v, n in zip(self.velocity, normal_vector))
+    def _calculate_penetration_depth(self, bullet_rect, block_rect):
+        # Вычисляем глубину проникновения по обеим осям
+        if bullet_rect.centerx < block_rect.centerx:
+            x_depth = bullet_rect.right - block_rect.left
+        else:
+            x_depth = block_rect.right - bullet_rect.left
 
-        # v₂ = v₁ - 2(v₁·n)n
-        self.velocity = [
-            (self.velocity[0] - 2 * dot_product * normal_vector[0]) * DUMPING,
-            (self.velocity[1] - 2 * dot_product * normal_vector[1]) * DUMPING
+        if bullet_rect.centery < block_rect.centery:
+            y_depth = bullet_rect.bottom - block_rect.top
+        else:
+            y_depth = block_rect.bottom - bullet_rect.top
+
+        return x_depth, y_depth
+
+    def _calculate_rollback_step(self, velocity, penetration):
+        # Вычисляем шаг отката на основе скорости и глубины проникновения
+        speed = math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
+        if speed == 0:
+            return 0.1  # дефолтный шаг
+
+        # Чем больше скорость и глубина, тем больше шаг
+        penetration_magnitude = math.sqrt(penetration[0] ** 2 + penetration[1] ** 2)
+        return min(0.2, max(0.05, penetration_magnitude / speed))
+
+    def _handle_bullet_penetration(self, bullet_rect, rect):
+        prev_pos = self.pos[:]
+        test_rect = bullet_rect.copy()
+        max_iterations = 20
+        iterations = 0
+        min_step = 0.01
+
+        while test_rect.colliderect(rect) and iterations < max_iterations:
+            x_depth, y_depth = self._calculate_penetration_depth(test_rect, rect)
+            step = self._calculate_rollback_step(self.velocity, (x_depth, y_depth))
+
+            if step < min_step:
+                break
+
+            prev_pos = [
+                prev_pos[0] - self.velocity[0] * step,
+                prev_pos[1] - self.velocity[1] * step
+            ]
+            test_rect.x = prev_pos[0] - self.offset[0]
+            test_rect.y = prev_pos[1] - self.offset[1]
+            iterations += 1
+
+        self.pos = prev_pos[:]
+
+    def _get_collision_point(self, bullet_rect, object_rect):
+        return (
+            max(object_rect.left, min(bullet_rect.centerx, object_rect.right)),
+            max(object_rect.top, min(bullet_rect.centery, object_rect.bottom))
+        )
+
+    def _get_distances_to_sides(self, collision_point, object_rect):
+        x, y = collision_point
+        return {
+            'left': (abs(x - object_rect.left), (-1, 0)),
+            'right': (abs(x - object_rect.right), (1, 0)),
+            'top': (abs(y - object_rect.top), (0, -1)),
+            'bottom': (abs(y - object_rect.bottom), (0, 1))
+        }
+
+    def _get_normal_from_velocity(self, distances):
+        conditions = [
+            (distances['left'][0], self.velocity[0] > 0, distances['left'][1]),
+            (distances['right'][0], self.velocity[0] < 0, distances['right'][1]),
+            (distances['top'][0], self.velocity[1] > 0, distances['top'][1]),
+            (distances['bottom'][0], self.velocity[1] < 0, distances['bottom'][1])
         ]
 
+        min_dist = min(dist for dist, _, _ in conditions)
+        for dist, velocity_check, normal in conditions:
+            if dist == min_dist and velocity_check:
+                return normal
+        return None
+
+    def _get_normal_from_center(self, collision_point, object_rect):
+        center_x = (object_rect.left + object_rect.right) / 2
+        center_y = (object_rect.top + object_rect.bottom) / 2
+        dx = collision_point[0] - center_x
+        dy = collision_point[1] - center_y
+
+        length = math.sqrt(dx * dx + dy * dy)
+        return (1, 0) if length == 0 else (dx / length, dy / length)
+
+    def calculate_normal(self, bullet_rect, object_rect):
+        collision_point = self._get_collision_point(bullet_rect, object_rect)
+        distances = self._get_distances_to_sides(collision_point, object_rect)
+
+        normal = self._get_normal_from_velocity(distances)
+        if normal is None:
+            normal = self._get_normal_from_center(collision_point, object_rect)
+
+        return normal
+
+    def _calculate_reflection_vector(self, velocity, normal):
+        dot_product = sum(v * n for v, n in zip(velocity, normal))
+        return [
+            (velocity[0] - 2 * dot_product * normal[0]) * DUMPING,
+            (velocity[1] - 2 * dot_product * normal[1]) * DUMPING
+        ]
+
+    def _update_direction_and_angle(self):
         current_speed = math.sqrt(self.velocity[0] ** 2 + self.velocity[1] ** 2)
         if current_speed < MIN_SPEED:
-            self.start_explode()
-            return
+            return False
 
         self.direction = [
             self.velocity[0] / current_speed,
             self.velocity[1] / current_speed
         ]
-
         self.angle = math.degrees(math.atan2(-self.velocity[1], self.velocity[0]))
+        return True
 
-    def calculate_normal(self, bullet_rect, object_rect):
-        collision_x = max(object_rect.left, min(bullet_rect.centerx, object_rect.right))
-        collision_y = max(object_rect.top, min(bullet_rect.centery, object_rect.bottom))
-
-        if collision_x == object_rect.left:
-            return (-1, 0)
-        elif collision_x == object_rect.right:
-            return (1, 0)
-        elif collision_y == object_rect.top:
-            return (0, -1)
-        else:
-            return (0, 1)
+    def reflect(self, normal_vector):
+        self.velocity = self._calculate_reflection_vector(self.velocity, normal_vector)
+        if not self._update_direction_and_angle():
+            self.start_explode()
 
     def check_range(self):
         if self.distance_traveled() > self.range:

@@ -51,10 +51,15 @@ class Game:
     def _init_pygame(self) -> None:
         """Initialize Pygame and setup display."""
         pygame.init()
-        pygame.display.set_caption('Teeworlds Game')
+        pygame.display.set_caption('TeeWorlds')
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        self.display = pygame.Surface((WIDTH / 2, HEIGHT / 2))
+        self.display = pygame.Surface((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
+        
+        # Добавляем обработчик событий при инициализации
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.close()
 
     def load_assets_paths(self, directory):
         block_paths = {}
@@ -232,7 +237,7 @@ class Game:
         """Process all game events including input handling."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self._handle_quit()
+                self.close()
 
             if self.is_cheat_menu_active:
                 self._handle_cheat_menu_input(event)
@@ -241,10 +246,6 @@ class Game:
 
             self.input_box.handle_event(event)
 
-    def _handle_quit(self) -> None:
-        """Clean up and quit the game."""
-        pygame.quit()
-        sys.exit()
 
     def _handle_gameplay_input(self, event: pygame.event.Event) -> None:
         """Handle input events during normal gameplay."""
@@ -490,19 +491,35 @@ class Game:
         for player in self.players.values():
             player.render(self.display, render_scroll)
 
-    def close(self):
-        self.client.send_data({"disconnect": True})
+    def close(self) -> None:
+        """Clean up and close the game."""
+        self.running = False
+        if hasattr(self, 'client') and self.client:
+            self.client.close()
+            
+        if hasattr(self, 'server') and self.server:
+            self.server.close()
+            
         pygame.quit()
         sys.exit()
 
-    def run(self):
-        """Main game loop handling rendering, input, and game state updates."""
+    def run(self) -> None:
+        """Run the game loop."""
+        self.running = True
+        
         while self.running:
+            self._process_events()
+            
+            if not self.running:
+                break
+                
             self._handle_rendering()
             self._update_game_state()
-            self._process_events()
             self._update_display()
+            
             self.clock.tick(FPS)
+            
+        self.close()
 
 
 if __name__ == "__main__":

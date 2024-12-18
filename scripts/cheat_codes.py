@@ -1,11 +1,11 @@
 cheat_cods = {
-    "SILFY": "full_hp",
-    "fGriOdmaDk": "immortality",
+    "HP": "full_hp",
+    "GOD": "immortality",
     "POWER": "damage_up",
-    "BiGDiCk" : "no_recoil",
-    "Jumper" : "no_jump_limits",
-    "BiGBrAiN" : "no_knockback",
-    "rico" : "RICO"
+    "ANIME" : "no_recoil",
+    "JUMPER" : "no_jump_limits",
+    "TANK" : "no_knockback",
+    "RICO" : "RICO"
 }
 
 

@@ -151,7 +151,7 @@ class Player:
         pygame.draw.rect(surface, (0, 255, 0), current_health_rect)
 
     def render_name(self, surface, offset=(0, 0)):
-        render_name = pygame.font.Font(BASE_DIR + '\\fonts\\JapanBentoDemoVersionRegular-nRWAJ.otf', 16).render(self.name, True, (0, 0, 0))
+        render_name = pygame.font.Font(None, 16).render(self.name, True, (0, 0, 0))
         text_rect = render_name.get_rect(center=(self.pos[0] + 5, int(self.pos[1]) - 15))
         text_rect.x = int(text_rect.x - offset[0])
         text_rect.y = int(text_rect.y - offset[1])
