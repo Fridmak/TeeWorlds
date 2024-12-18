@@ -31,12 +31,12 @@ from scripts import settings
 from client import Client
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+LEFT_CLICK: int = 1
+RIGHT_CLICK: int = 3
 
 
 class Game:
     """Main game class handling game initialization, rendering, and game loop."""
-
-    # inizialization opened -----------------------------------------------------------------
 
     def __init__(self):
         """Initialize the game, setup display, load assets, and establish network connection."""
@@ -53,15 +53,10 @@ class Game:
         pygame.init()
         pygame.display.set_caption('TeeWorlds')
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        self.display = pygame.Surface((WIDTH, HEIGHT))
+        self.display = pygame.Surface((WIDTH/2, HEIGHT/2))
         self.clock = pygame.time.Clock()
-        
-        # Добавляем обработчик событий при инициализации
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.close()
 
-    def load_assets_paths(self, directory):
+    def load_assets_paths(self, directory: str):
         block_paths = {}
         for filename in os.listdir(BASE_DIR + '\\assets\\sprites\\' + directory):
             if filename.endswith('.png'):
@@ -109,7 +104,7 @@ class Game:
             name, self.map = MainMenu(self.screen, True, self).main_menu()
             with open(BASE_DIR + f'\\maps\\{self.map}.json', 'r', encoding='utf-8') as file:
                 self.blockmap.blockmap = json.load(file)
-            # Добавляем разделитель в конец сообщения
+
             map_data = {'map': self.blockmap.blockmap}
             self.client.send_data(map_data)
         else:
@@ -176,11 +171,9 @@ class Game:
             ) for i in range(4)
         ]
 
-    # inizialization closed -----------------------------------------------------------------
-
     def _handle_rendering(self) -> None:
         """Handle all rendering operations."""
-        # Clear screen and render background
+
         self.screen.fill((0, 0, 0))
         for bg in self.main_background:
             self.display.blit(bg, (0, 0))
@@ -246,44 +239,46 @@ class Game:
 
             self.input_box.handle_event(event)
 
-
     def _handle_gameplay_input(self, event: pygame.event.Event) -> None:
         """Handle input events during normal gameplay."""
-        if event.type == pygame.KEYDOWN:
-            self._handle_keydown(event)
-        elif event.type == pygame.KEYUP:
-            self._handle_keyup(event)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            self._handle_mouse_down(event)
-        elif event.type == pygame.MOUSEBUTTONUP:
-            self._handle_mouse_up(event)
-        elif event.type == pygame.MOUSEWHEEL:
-            self._handle_mouse_wheel(event)
+        match event.type:
+            case pygame.KEYDOWN:
+                self._handle_keydown(event)
+            case pygame.KEYUP:
+                self._handle_keyup(event)
+            case pygame.MOUSEBUTTONDOWN:
+                self._handle_mouse_down(event)
+            case pygame.MOUSEBUTTONUP:
+                self._handle_mouse_up(event)
+            case pygame.MOUSEWHEEL:
+                self._handle_mouse_wheel(event)
 
     def _handle_keydown(self, event: pygame.event.Event) -> None:
         """Handle keyboard key press events."""
-        if event.key == 96:  # Tilde key
-            self.is_cheat_menu_active = True
-            self.input_box.text = ""
-        elif event.key == pygame.K_e:
-            self.player.is_e_active = True
-        elif event.key == pygame.K_a:
-            self.movement[0] = True
-        elif event.key == pygame.K_d:
-            self.movement[1] = True
-        elif event.key == pygame.K_SPACE:
-            self.player.jump()
+        match event.key:
+            case 96:  # Tilde key
+                self.is_cheat_menu_active = True
+                self.input_box.text = ""
+            case pygame.K_e:
+                self.player.is_e_active = True
+            case pygame.K_a:
+                self.movement[0] = True
+            case pygame.K_d:
+                self.movement[1] = True
+            case pygame.K_SPACE:
+                self.player.jump()
 
     def _handle_keyup(self, event: pygame.event.Event) -> None:
         """Handle keyboard key release events."""
-        if event.key == pygame.K_a:
-            self.movement[0] = False
-            self.player.velocity[0] = 0
-        elif event.key == pygame.K_e:
-            self.player.is_e_active = False
-        elif event.key == pygame.K_d:
-            self.movement[1] = False
-            self.player.velocity[0] = 0
+        match event.key:
+            case pygame.K_a:
+                self.movement[0] = False
+                self.player.velocity[0] = 0
+            case pygame.K_e:
+                self.player.is_e_active = False
+            case pygame.K_d:
+                self.movement[1] = False
+                self.player.velocity[0] = 0
 
     def _handle_mouse_down(self, event: pygame.event.Event) -> None:
         """Handle mouse button press events."""
@@ -291,16 +286,18 @@ class Game:
         world_mouse_pos = (mouse_pos[0], mouse_pos[1])
         direction = self._calculate_direction(world_mouse_pos)
 
-        if event.button == 3:  # Right click
+        if event.button == RIGHT_CLICK:
             self.player.hook.shoot(direction)
-        elif event.button == 1:  # Left click
+        elif event.button == LEFT_CLICK:
             self.player.current_weapon.shoot(direction)
             self.player.current_weapon.is_shooting = True
 
+
     def _handle_mouse_up(self, event: pygame.event.Event) -> None:
         """Handle mouse button release events."""
-        if event.button == 1:  # Left click release
+        if event.button == LEFT_CLICK:
             self.player.current_weapon.is_shooting = False
+
 
     def _handle_mouse_wheel(self, event: pygame.event.Event) -> None:
         """Handle mouse wheel events for weapon switching."""
@@ -309,11 +306,13 @@ class Game:
         elif event.y < 0:
             self.player.switch_weapon(-1)
 
+
     def _calculate_direction(self, world_mouse_pos: Tuple[float, float]) -> Tuple[float, float]:
         """Calculate normalized direction vector from player to mouse position."""
         direction = (world_mouse_pos[0] - WIDTH / 2, world_mouse_pos[1] - HEIGHT / 2)
         length = math.sqrt(direction[0] * direction[0] + direction[1] * direction[1])
         return (direction[0] / length, direction[1] / length)
+
 
     def _handle_cheat_menu_input(self, event: pygame.event.Event) -> None:
         """Handle input events when cheat menu is active."""
@@ -323,11 +322,13 @@ class Game:
             elif event.key == pygame.K_RETURN or self.input_box.is_enter_pressed:
                 self._handle_cheat_code()
 
+
     def _close_cheat_menu(self) -> None:
         """Close the cheat menu and reset its state."""
         self.is_cheat_menu_active = False
         self.is_warning_active = False
         self.input_box.text = ''
+
 
     def _handle_cheat_code(self) -> None:
         """Process entered cheat code."""
@@ -340,31 +341,35 @@ class Game:
         self.input_box.is_enter_pressed = False
         self.input_box.text = ""
 
+
     def _apply_cheat_code(self, code: str) -> None:
         """Apply the effect of a cheat code."""
         self.is_cheat_menu_active = False
         self.is_warning_active = False
 
-        if code == "immortality":
-            self.player.is_immortal = True
-        elif code == "full_hp":
-            self.player.hp = 100
-        elif code == "damage_up":
-            self.player.current_weapon.damage *= 2
-        elif code == "no_jump_limits":
-            self.player.no_jump_limits = True
-        elif code == "no_recoil":
-            self.player.current_weapon.shooting_timeout = 0.01
-        elif code == "no_knockback":
-            self.player.current_weapon.push_power = 0  # 0 is important (in rpg_bullet)
-        elif code == "RICO":
-            if str(self.player.current_weapon) == "RPG":
-                self.player.current_weapon.rickochet = True
+        match code:
+            case "immortality":
+                self.player.is_immortal = True
+            case "full_hp":
+                self.player.hp = 100
+            case "damage_up":
+                self.player.current_weapon.damage *= 2
+            case "no_jump_limits":
+                self.player.no_jump_limits = True
+            case "no_recoil":
+                self.player.current_weapon.shooting_timeout = 0.01
+            case "no_knockback":
+                self.player.current_weapon.push_power = 0  # 0 is important (in rpg_bullet)
+            case "RICO":
+                if str(self.player.current_weapon) == "RPG":
+                    self.player.current_weapon.rickochet = True
+
 
     def _update_game_state(self) -> None:
         """Update game state and network synchronization."""
         self.input_box.update()
         self.send_player_info()
+
 
     def _update_display(self) -> None:
         """Update the game display with the current frame."""
@@ -375,9 +380,11 @@ class Game:
 
         pygame.display.update()
 
+
     def send_player_info(self):
         self._update_player_info()
         self.client.send_data(self.player_info)
+
 
     def _update_player_info(self):
         """Updates the player_info dictionary with the current player state."""
@@ -399,16 +406,19 @@ class Game:
             'is_hiding': player.is_hiding
         })
 
+
     def _process_incoming_data(self, data):
         """Processes the incoming data from the client."""
         self._update_players_data(data)
         self._remove_disconnected_players()
         self._update_or_add_players()
 
+
     def _update_players_data(self, data):
         """Updates the players_data dictionary with deserialized data."""
         self.players_data = json.loads(data)
         self.players_data.pop(self.client.address, None)
+
 
     def _remove_disconnected_players(self):
         """Removes players from the internal state that are no longer connected."""
@@ -417,9 +427,9 @@ class Game:
             if addr not in current_addresses:
                 self.players.pop(addr)
 
+
     def _update_or_add_players(self):
         """Adds new players and updates existing ones with the latest data."""
-        # Проверяем, что player уже инициализирован
         if not hasattr(self, 'player'):
             return
 
@@ -433,6 +443,7 @@ class Game:
             self._update_player(player, player_info)
 
             self.player.other_bullets.extend(player.bullets)
+
 
     def _update_player(self, player, player_info):
         """Updates a single player's attributes."""
@@ -448,6 +459,7 @@ class Game:
         player.id = player_info['id']
         player.is_e_active = player_info['is_e_active']
         player.is_hiding = player_info['is_hiding']
+
 
     def deserialize_bullet(self, bullet_info):
         pos = bullet_info['pos']
@@ -470,13 +482,15 @@ class Game:
         elif bullet_info['bullet_type'] == 'deagle_bullet':
             return self.handle_default_gun('deagle', pos, direction, damage, bullet_info)
 
+
     def handle_default_gun(self, name, pos, direction, damage, bullet_info):
         bullet = default_bullet.Bullet(self, pos, direction, damage, self.get_bullets_image(name))
         bullet.is_exist = bullet_info['is_exist']
         bullet.damaged_player = bullet_info['damaged_player']
         bullet.is_damaged = bullet_info['is_damaged']
-        bullet.shooter_id = bullet_info.get('shooter_id', -1)  # Получаем ID стрелка, по умолчанию -1
+        bullet.shooter_id = bullet_info.get('shooter_id', -1)
         return bullet
+
 
     def get_bullets_image(self, name):
         s = {
@@ -487,38 +501,41 @@ class Game:
         }
         return s[name]
 
+
     def render_players(self, render_scroll):
         for player in self.players.values():
             player.render(self.display, render_scroll)
+
 
     def close(self) -> None:
         """Clean up and close the game."""
         self.running = False
         if hasattr(self, 'client') and self.client:
             self.client.close()
-            
+
         if hasattr(self, 'server') and self.server:
             self.server.close()
-            
+
         pygame.quit()
         sys.exit()
+
 
     def run(self) -> None:
         """Run the game loop."""
         self.running = True
-        
+
         while self.running:
             self._process_events()
-            
+
             if not self.running:
                 break
-                
+
             self._handle_rendering()
             self._update_game_state()
             self._update_display()
-            
+
             self.clock.tick(FPS)
-            
+
         self.close()
 
 
