@@ -6,6 +6,7 @@ import time
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from scripts import settings
 
+
 class InputWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -57,16 +58,14 @@ class InputWindow(QWidget):
         subprocess.run([python_executable, script_path])
 
     def is_server_running(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        while True:
-            try:
-                sock.connect((self.host, self.port))
-                return True
-            except (socket.timeout, ConnectionRefusedError):
-                return False
-            except Exception:
-                raise
-            finally:
-                sock.close()
-                time.sleep(0.1)
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(2)
+
+            result = sock.connect_ex((self.host, self.port))
+
+            return result == 0
+        except socket.error:
+            return False
+        finally:
+            sock.close()
