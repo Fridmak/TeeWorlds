@@ -249,3 +249,5 @@ class Player:
         self.hp = self.max_hp
         self.velocity = [0, 0]
         self.immortality_time = 120
+        # Запрашиваем актуальное состояние карты
+        self.game.client.send_data({'request_map': True})

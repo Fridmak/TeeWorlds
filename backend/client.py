@@ -71,7 +71,7 @@ class Client:
             serialized_info = json.dumps(data)
             self._send_to_client(serialized_info)
         except Exception as e:
-            self._handle_send_exception(e)
+            print(f"Error sending player information: {e}")
 
     def _send_to_client(self, data : {}) -> None:
         """Sends the serialized player info to the client."""

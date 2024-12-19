@@ -11,6 +11,7 @@ import json
 import threading
 import math
 import random
+import logging
 from typing import Tuple
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -450,14 +451,27 @@ class Game:
 
     def _process_incoming_data(self, data):
         """Processes the incoming data from the client."""
-        self._update_players_data(data)
-        self._remove_disconnected_players()
-        self._update_or_add_players()
+        try:
+            data = json.loads(data)
+
+            if 'map' in data:
+                self.blockmap.blockmap = data['map']
+                self.doors = [Door([pos[0] * 16, pos[1] * 16], self)
+                            for pos in self.blockmap.door_positions]
+                return
+
+            self._update_players_data(data)
+            self._remove_disconnected_players()
+            self._update_or_add_players()
+        except json.JSONDecodeError as e:
+            logging.error(f"Error decoding JSON: {e}, data: {data[:50]}...")
+        except Exception as e:
+            logging.error(f"Error processing data: {e}")
 
 
     def _update_players_data(self, data):
         """Updates the players_data dictionary with deserialized data."""
-        self.players_data = json.loads(data)
+        self.players_data = data  # data уже распарсен
         self.players_data.pop(self.client.address, None)
 
 
@@ -494,7 +508,17 @@ class Game:
         player.hook.pos = (player_info['hook_x'], player_info['hook_y'])
         player.mouse_pos = player_info['mouse_pos']
         player.current_weapon = player.weapons[player_info['weapon_index']]
-        player.bullets = [self.deserialize_bullet(bullet) for bullet in player_info['bullets']]
+        
+        # Обрабатываем пули и попадания
+        new_bullets = []
+        for bullet_info in player_info['bullets']:
+            bullet = self.deserialize_bullet(bullet_info)
+            # Если пуля попала в нас
+            if bullet.is_damaged and bullet.damaged_player == self.player.id:
+                self.player.take_damage(bullet.damage)
+            new_bullets.append(bullet)
+        player.bullets = new_bullets
+        
         player.hp = player_info['hp']
         player.name = player_info['nickname']
         player.id = player_info['id']
@@ -513,7 +537,7 @@ class Game:
             bullet = rpg_bullet.Bullet(self, pos, direction, is_bullet_flipped, angle, damage)
             bullet.is_damaged = bullet_info['is_damaged']
             bullet.exploded = bullet_info['is_exploded']
-            bullet.damaged_players = bullet_info['damaged_players']
+            bullet.damaged_player = bullet_info['damaged_player']
             return bullet
         elif bullet_info['bullet_type'] == 'minigun_bullet':
             return self.handle_default_gun('minigun', pos, direction, damage, bullet_info)
@@ -553,7 +577,7 @@ class Game:
         """Clean up and close the game."""
         self.running = False
         if hasattr(self, 'client') and self.client:
-            self.client.close()
+            self.client.socket.close()
 
         if hasattr(self, 'server') and self.server:
             self.server.close()

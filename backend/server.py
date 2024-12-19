@@ -3,6 +3,7 @@ import threading
 import json
 import logging
 import os, sys
+import time
 
 # Add the project root to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,7 +31,7 @@ class GameServer:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients: [socket.socket] = []
         self.players: {(str, int), dict} = {}
-        self.map: {} = {}
+        self.map = None  # Изначально карта None
         self.was_working = False
         self.shutdown_event = threading.Event()
 
@@ -66,11 +67,21 @@ class GameServer:
     def _send_data_to_clients(self) -> None:
         """Broadcast current player data to all connected clients."""
         try:
+            # Отправляем только данные игроков
             player_data = json.dumps(self.players).encode('utf-8') + b'\n'
             for client in self.clients:
                 client.sendall(player_data)
         except Exception as e:
             logging.error(f'Error sending data to players: {str(e)}')
+
+    def _broadcast_map(self) -> None:
+        """Broadcast map data to all connected clients."""
+        try:
+            map_data = json.dumps({'map': self.map}).encode('utf-8') + b'\n'
+            for client in self.clients:
+                client.sendall(map_data)
+        except Exception as e:
+            logging.error(f'Error broadcasting map: {str(e)}')
 
     def handle_client(self, conn: socket.socket, addr: (str, int)) -> None:
         """
@@ -96,8 +107,12 @@ class GameServer:
                         loaded_data = json.loads(message)
 
                         if 'map' in loaded_data:
-                            self.map = loaded_data['map']
-                            logging.info(f'Received map from {player_key}')
+                            # Сохраняем карту только если в ней есть изменения
+                            if loaded_data['map'] != self.map:
+                                logging.info(f'Map changed, old: {self.map is None}, new: {loaded_data["map"] is None}')  # DEBUG
+                                self.map = loaded_data['map']
+                                logging.info(f'Received map from {player_key}')
+                                self._broadcast_map()
                             continue
 
                         if 'disconnect' in loaded_data:
@@ -127,33 +142,45 @@ class GameServer:
         finally:
             self._on_client_disconnected(conn, addr)
 
-    def start(self) -> None:
+    def start(self):
         """Start the game server and handle incoming connections."""
         try:
-            while True:
-                conn, addr = self.server_socket.accept()
-                address = f'{addr[0]}:{addr[1]}'
-                logging.info(f'New connection from {address}')
+            while not self.shutdown_event.is_set():
+                try:
+                    conn, addr = self.server_socket.accept()
+                    logging.info(f'Connected by {addr}')
 
-                self.clients.append(conn)
+                    # Сначала отправляем карту
+                    if self.map:
+                        logging.info(f'Sending existing map to new client')
+                        map_data = json.dumps({'map': self.map}).encode('utf-8') + b'\n'
+                        conn.sendall(map_data)
+                    else:
+                        logging.info(f'Sending empty map to new client')
+                        map_data = json.dumps({'map': None}).encode('utf-8') + b'\n'
+                        conn.sendall(map_data)
 
-                initial_data = json.dumps({'map': self.map if self.map else None}).encode()
-                conn.sendall(initial_data)
+                    # Даем клиенту время обработать карту
+                    time.sleep(0.1)
 
-                client_thread = threading.Thread(
-                    target=self.handle_client,
-                    args=(conn, addr),
-                    daemon=True
-                )
-                client_thread.start()
+                    # Только потом добавляем в список клиентов
+                    self.clients.append(conn)
+
+                    client_thread = threading.Thread(
+                        target=self.handle_client,
+                        args=(conn, addr)
+                    )
+                    client_thread.daemon = True
+                    client_thread.start()
+
+                except socket.error as e:
+                    if not self.shutdown_event.is_set():
+                        logging.error(f"Socket error: {e}")
 
         except KeyboardInterrupt:
-            logging.info('Server closed by user')
-        except Exception as e:
-            pass
-        finally:
-            if not self.shutdown_event.is_set():
-                self._clean()
+            logging.info("Server shutting down...")
+            self._send_shutdown_notification()
+            self._clean()
 
     def _send_shutdown_notification(self):
         """Notify all clients before shutting down."""

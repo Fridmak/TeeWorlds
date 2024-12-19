@@ -32,7 +32,7 @@ class Bullet:
         self.offset = (0, 0)
         self.damage = damage
         self.is_damaged = False
-        self.damaged_players = []
+        self.damaged_player = []
         self.knockback = knockback
         self.rickochet = rickochet
         self.flaught_away = False
@@ -62,7 +62,7 @@ class Bullet:
 
     def check_collisions(self, is_enemy):
         bullet_rect = self.rect()
-        if self.game.player.id in self.damaged_players:
+        if self.game.player.id in self.damaged_player:
             if is_enemy:
                 self.deal_damage_to_player(self.game.player)
             else:
@@ -101,7 +101,6 @@ class Bullet:
         return False
 
     def _calculate_penetration_depth(self, bullet_rect, block_rect):
-        # Вычисляем глубину проникновения по обеим осям
         if bullet_rect.centerx < block_rect.centerx:
             x_depth = bullet_rect.right - block_rect.left
         else:
@@ -228,7 +227,7 @@ class Bullet:
         return self.distance_to(self.start_pos)
 
     def mark_for_damage(self, player):
-        self.damaged_players.append(player.id)
+        self.damaged_player.append(player.id)
         self.is_damaged = True
 
     def damage_nearby_players(self):
@@ -313,6 +312,6 @@ class Bullet:
             'is_exploded': self.exploded,
             'bullet_type': 'rpg',
             'damage': self.damage,
-            'damaged_players': self.damaged_players,
+            'damaged_player': self.damaged_player,
             'is_damaged': self.is_damaged,
         }

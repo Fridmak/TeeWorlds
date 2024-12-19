@@ -69,8 +69,9 @@ class Blockmap:
                 self.hiding_blocks_positions.append(rect)
 
     def find_door_positions(self):
+        self.door_positions = []  # Очищаем список перед поиском
         for block in self.blockmap.values():
-            if block['type'] == 'closed_door' or block['type'] == 'closed_gray_door':
+            if block['type'] in ('closed_door', 'opened_door', 'closed_gray_door', 'opened_gray_door'):
                 self.door_positions.append(block['pos'])
 
     def blocks_around(self, pos):

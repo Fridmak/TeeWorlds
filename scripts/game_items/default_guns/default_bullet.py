@@ -62,54 +62,20 @@ class Bullet:
         bullet_rect = self.rect()
 
         for player in self.game.players.values():
-            if bullet_rect.colliderect(player.rect()) :
-
+            if bullet_rect.colliderect(player.rect()):
                 if self.shooter_id == self.game.player.id:
-                    player.take_damage(self.damage)
-                    self.is_exist = False
+
                     self.damaged_player = player.id
                     self.is_damaged = True
+                    self.is_exist = False
                     break
 
-
         if bullet_rect.colliderect(self.game.player.rect()):
-
             if self.shooter_id != self.game.player.id:
                 self.game.player.take_damage(self.damage)
-                self.is_exist = False
                 self.damaged_player = self.game.player.id
                 self.is_damaged = True
-
-    def _check_collisions_smart(self, player):
-        bullet_current_pos = self.pos
-        bullet_next_pos = [self.pos[0] + self.velocity[0], self.pos[1] + self.velocity[1]]
-
-        player_rect = player.rect()
-        player_center = [player_rect.centerx, player_rect.centery]
-
-        distance = self._point_to_line_distance(bullet_current_pos, bullet_next_pos, player_center)
-
-        radius_threshold = max(player_rect.width, player_rect.height) / 2
-        if distance <= radius_threshold:
-            return True
-
-        return False
-
-    def _point_to_line_distance(self, start, end, point):
-        line_dx = end[0] - start[0]
-        line_dy = end[1] - start[1]
-
-        if line_dx == 0 and line_dy == 0:
-            return math.dist(start, point)
-
-        t = ((point[0] - start[0]) * line_dx + (point[1] - start[1]) * line_dy) / (line_dx ** 2 + line_dy ** 2)
-        t = max(0, min(1, t))
-
-        proj_x = start[0] + t * line_dx
-        proj_y = start[1] + t * line_dy
-        dist = math.dist([proj_x, proj_y], point)
-
-        return dist
+                self.is_exist = False
 
     def _check_collision_with_walls(self, tilemap):
         bullet_rect = self.rect()

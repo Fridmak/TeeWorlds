@@ -12,13 +12,17 @@ class Door:
             'closed_gray_door': load_sprite(BASE_DIR + '\\blocks\\closed_gray_door.png'),
             'opened_gray_door': load_sprite(BASE_DIR + '\\blocks\\opened_gray_door.png')
         }
-        self.is_open = False
         self.pos = pos
         self.game = game
         self.center_coordinates = [pos[0] + 8, pos[1] + 16]
         self.can_be_closed = True
         self.door_kd = 60
         self.current_tick = 0
+        
+        # Инициализируем состояние из карты
+        blockmap_key = self.get_blockmap_key()
+        block_type = self.game.blockmap.blockmap[blockmap_key]['type']
+        self.is_open = block_type in ['opened_door', 'opened_gray_door']
 
     def update(self):
         self.current_tick += 1
@@ -48,6 +52,7 @@ class Door:
             self.game.blockmap.blockmap[blockmap_key]['type'] = 'opened_door'
         elif current_type == 'closed_gray_door':
             self.game.blockmap.blockmap[blockmap_key]['type'] = 'opened_gray_door'
+        self._send_map()
 
     def close_door(self, blockmap_key):
         self.is_open = False
@@ -56,6 +61,11 @@ class Door:
             self.game.blockmap.blockmap[blockmap_key]['type'] = 'closed_door'
         elif current_type == 'opened_gray_door':
             self.game.blockmap.blockmap[blockmap_key]['type'] = 'closed_gray_door'
+        self._send_map()
+
+    def _send_map(self):
+        map_data = {'map': self.game.blockmap.blockmap}
+        self.game.client.send_data(map_data)
 
     def get_blockmap_key(self):
         return f"{self.pos[0] // 16};{self.pos[1] // 16}"
