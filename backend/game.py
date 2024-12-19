@@ -350,6 +350,8 @@ class Game:
 
     def normalize(self, direction):
         length = math.sqrt(direction[0] * direction[0] + direction[1] * direction[1])
+        if length == 0:
+            return direction
         return (direction[0] / length, direction[1] / length)
 
 
@@ -508,12 +510,10 @@ class Game:
         player.hook.pos = (player_info['hook_x'], player_info['hook_y'])
         player.mouse_pos = player_info['mouse_pos']
         player.current_weapon = player.weapons[player_info['weapon_index']]
-        
-        # Обрабатываем пули и попадания
+
         new_bullets = []
         for bullet_info in player_info['bullets']:
             bullet = self.deserialize_bullet(bullet_info)
-            # Если пуля попала в нас
             if bullet.is_damaged and bullet.damaged_player == self.player.id:
                 self.player.take_damage(bullet.damage)
             new_bullets.append(bullet)
