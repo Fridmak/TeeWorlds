@@ -250,4 +250,4 @@ class Player:
         self.velocity = [0, 0]
         self.immortality_time = 120
         # Запрашиваем актуальное состояние карты
-        self.game.client.send_data({'request_map': True})
+        #self.game.client.send_data({'request_map': True})

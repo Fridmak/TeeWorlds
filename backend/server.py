@@ -150,7 +150,6 @@ class GameServer:
                     conn, addr = self.server_socket.accept()
                     logging.info(f'Connected by {addr}')
 
-                    # Сначала отправляем карту
                     if self.map:
                         logging.info(f'Sending existing map to new client')
                         map_data = json.dumps({'map': self.map}).encode('utf-8') + b'\n'
@@ -160,10 +159,8 @@ class GameServer:
                         map_data = json.dumps({'map': None}).encode('utf-8') + b'\n'
                         conn.sendall(map_data)
 
-                    # Даем клиенту время обработать карту
                     time.sleep(0.1)
 
-                    # Только потом добавляем в список клиентов
                     self.clients.append(conn)
 
                     client_thread = threading.Thread(

@@ -46,7 +46,7 @@ class InputWindow(QWidget):
             thread.start()
 
         self.close()
-        time.sleep(0.2)
+        time.sleep(0.3)
         self._run_backend_scripts('game.py')
 
     def _run_backend_scripts(self, file):
