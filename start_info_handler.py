@@ -3,7 +3,7 @@ import sys, os, subprocess
 import threading
 import time
 
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from scripts import settings
 
 

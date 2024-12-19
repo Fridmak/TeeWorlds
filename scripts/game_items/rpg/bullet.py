@@ -72,7 +72,7 @@ class Bullet:
             if self.is_damaged:
                 self.start_explode()
                 return True
-            self.check_damage_to_players(bullet_rect)
+        self.check_damage_to_players(bullet_rect)
         return self.check_block_collisions(bullet_rect, is_enemy)
 
     def check_damage_to_players(self, bullet_rect):
@@ -253,9 +253,6 @@ class Bullet:
 
     def apply_explosion_force(self, player):
         if self.game.player.id == player.id and self.knockback == 0:
-            return
-
-        if player.immortality_time > 0:
             return
 
         dx, dy, distance = self.calculate_distance_vector(player.rect().center)
